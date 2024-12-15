@@ -7,6 +7,7 @@ using TMPro;
 using Unity.Mathematics;
 using UnityEngine.EventSystems;
 
+
 public class GameManage : MonoBehaviour
 {
     //[SerializeField] private Transform FruitPrefab;
@@ -23,11 +24,15 @@ public class GameManage : MonoBehaviour
 
     private float MoveSpeed = 0.35f;
     private float delayTime = 1.5f;
+    private float delay_Spawn_Time = 0f;
+    private float delay_Replace_Time = 0f;
     public int FruitIndex;
     public int CountClick;
     public int CountCollision = 2;
     private int RamdomIndex;
 
+    private bool Can_Replace;
+    private bool Can_Spawn = true;
     private bool isFrist = true;
     public bool isMoving = false;
     public bool isDown = false;
@@ -35,6 +40,7 @@ public class GameManage : MonoBehaviour
     public bool canDropNewFruit = false;
     public bool isHold;
     public bool isMouseHandle = true;
+
 
     public Vector2 enterPosition;
     private Vector3 TargetFruitPosition;
@@ -74,27 +80,50 @@ public class GameManage : MonoBehaviour
         TargetFruitPosition = newFruit.position;
         isFrist = false;
         CountClick = 0;
-        Application.targetFrameRate = 60;
+        Application.targetFrameRate = 90;
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        Debug.Log(isMoving);
         if (isReplace)
         {
             if (Destroy_Fruit_1 != null) 
             {
-                int.TryParse(Destroy_Fruit_1.gameObject.tag, out FruitIndex);
-                enterPosition = (Destroy_Fruit_2.transform.position + Destroy_Fruit_1.transform.position)/2;  
-                StartCoroutine(DeLayedReplace());
+                Find_Fruit_Index(Destroy_Fruit_1.gameObject.tag);
+                enterPosition = (Destroy_Fruit_2.transform.position + Destroy_Fruit_1.transform.position)/2;
+
+                if(delay_Replace_Time > 0.06f)
+                {
+                    ReplaceFruit();
+                    delay_Replace_Time = 0f;
+                }
+                else
+                {
+                    delay_Replace_Time += Time.deltaTime;
+                }                               
+
             }
         }
-            MouseInput();       
+        if (!isMoving && !isDown && Can_Spawn)
+        {
+            delay_Spawn_Time += Time.deltaTime;
+            if (delay_Spawn_Time >= 0.5f)
+            {
+                SpawnNewFruit();
+            }
+        }
 
-        if (isMoving ) {
+        MouseInput();       
+
+        if (isMoving) {
             MoveFruitToTarget();
         }
+
+
+
+
     }
     private void MouseInput()
     {
@@ -119,55 +148,68 @@ public class GameManage : MonoBehaviour
 
     public void SpawnNewFruit()
     {
-        if (isFrist)
-        {           
-            newFruit = Instantiate(FruitPrefabs[RamdomIndex], FruitHolder);
-            newFruit.position = FruitStartPosition;
-            currentRigidbody = newFruit.GetComponent<Rigidbody2D>();
-            TargetFruitPosition = newFruit.position;
-            currentFruits.Add(newFruit);
-            GetNewFruit();
-        }
-        else
+
+        if (!Can_Spawn || isMoving || isDown) return;
+
+        delay_Spawn_Time = 0f;
+
+        if ( Can_Spawn ) 
         {
-            if (!ChangeFruit.is_Lock_Item_Change && !isReplace)
+            Debug.Log("spawn");
+            if (isFrist)
             {
-                Destroy(newFruit.gameObject);
-                newFruit = Instantiate(FruitPrefabs[ChangeFruit.ChooseIndex], FruitHolder);
-                ChangeFruit.is_Lock_Item_Change = true;
+                newFruit = Instantiate(FruitPrefabs[RamdomIndex], FruitHolder);
+                newFruit.position = FruitStartPosition;
+                currentRigidbody = newFruit.GetComponent<Rigidbody2D>();
+                TargetFruitPosition = newFruit.position;
+                currentFruits.Add(newFruit);
+                GetNewFruit();
             }
             else
             {
-                newFruit = Instantiate(FruitPrefabs[RamdomIndex], FruitHolder);
-                GetNewFruit();
+                if (!ChangeFruit.is_Lock_Item_Change && !isReplace)
+                {
+                    Destroy(newFruit.gameObject);
+                    newFruit = Instantiate(FruitPrefabs[ChangeFruit.ChooseIndex], FruitHolder);
+                    ChangeFruit.is_Lock_Item_Change = true;
+                }
+                else
+                {
+                    newFruit = Instantiate(FruitPrefabs[RamdomIndex], FruitHolder);
+                    GetNewFruit();
+                }
+                currentRigidbody = newFruit.GetComponent<Rigidbody2D>();
+
+                newFruit.position = TargetFruitPosition;
+
+                TargetFruitPosition = newFruit.position;
+
+                currentFruits.Add(newFruit);
+
             }
-            currentRigidbody = newFruit.GetComponent<Rigidbody2D>();   
-            
-            newFruit.position = TargetFruitPosition;
+            Can_Spawn = false;
 
-            TargetFruitPosition = newFruit.position;
-
-            currentFruits.Add(newFruit);
-
+            isMouseHandle = true;
+            CountClick = 0;
         }
-        isMouseHandle = true;
-        CountClick = 0;
+
     }
 
-    public IEnumerator DeLayedSpawn()
-    {
-        yield return new WaitForSeconds(delayTime); 
-        SpawnNewFruit();
-    }
     public void ReplaceFruit()
     {
+            Debug.Log("destroy : " + Destroy_Fruit_1.name);
+            Destroy(Destroy_Fruit_1);
+            Destroy(Destroy_Fruit_2);
+            
             Debug.Log("Index: " + FruitIndex);
             Transform ReplaceFruit = Instantiate(FruitPrefabs[FruitIndex + 1], enterPosition, FruitPrefabs[FruitIndex + 1].rotation);
             Debug.Log("Replace: " + ReplaceFruit.name);
+
             GamePoint += (FruitIndex + 1) * 10;
             Txt_GamePoint.text = GamePoint.ToString();
             ReplaceFruit.GetComponent<Rigidbody2D>().isKinematic = false;
 
+            isReplace = false;
             if (ReplaceFruit.tag == "8")
             {
                 Debug.Log("win");
@@ -183,17 +225,6 @@ public class GameManage : MonoBehaviour
         
         getNextImage.sprite = nextFruitSprite;
        // getNextImage.rectTransform.localPosition = new Vector3(0.5f, 0.5f, 1f);
-    }
-    private IEnumerator DeLayedReplace()
-    {
-        float delayReplace = 0.2f;
-        Debug.Log("destroy : " + Destroy_Fruit_1.name);
-        Destroy(Destroy_Fruit_1);
-        Destroy(Destroy_Fruit_2);
-        yield return new WaitForSeconds(delayReplace);
-        ReplaceFruit() ;
-        isReplace = false;
-
     }
 
     public bool isMouseOverUI()
@@ -266,11 +297,50 @@ public class GameManage : MonoBehaviour
             {
 
                 isDown = false;
-                currentRigidbody.isKinematic = false;
                 //currentRigidbody.gravityScale = 1f;   
                 ChangeFruit.is_Lock_Item_Change = true;
-                StartCoroutine(DeLayedSpawn());
+                currentRigidbody.isKinematic = false;
+                Can_Spawn = true;
             }
         }
+    }
+    private int Find_Fruit_Index(string tag)
+    {
+        switch (tag)
+        {
+            case "0":
+                FruitIndex = 1;
+                break;
+            case "1":
+                FruitIndex = 2;
+                break ;
+            case "2":
+                FruitIndex = 3;
+                break;
+            case "3":
+                FruitIndex = 4;
+                break;
+            case "4":
+                FruitIndex = 5;
+                break;
+            case "5":
+                FruitIndex = 6;
+                break;
+            case "6":
+                FruitIndex = 7;
+                break;
+            case "7":
+                FruitIndex = 8;
+                break;
+            case "8":
+                FruitIndex = 9;
+                break;
+            case "9":
+                FruitIndex = 10;
+                break;
+            default:
+                break;
+        }
+        return FruitIndex;
     }
 }
