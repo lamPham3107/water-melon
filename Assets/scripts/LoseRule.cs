@@ -33,7 +33,7 @@ public class LoseRule : MonoBehaviour
         if (collision.gameObject.layer == 6)
         {
             time += Time.deltaTime;
-            if(time >= 1.5f)
+            if(time >= 1f)
             {
                 Debug.Log("lose");
                 GameOver();

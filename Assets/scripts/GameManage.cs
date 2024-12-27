@@ -23,7 +23,6 @@ public class GameManage : MonoBehaviour
     private Rigidbody2D currentRigidbody;
 
     private float MoveSpeed = 0.35f;
-    private float delayTime = 1.5f;
     private float delay_Spawn_Time = 0f;
     private float delay_Replace_Time = 0f;
     public int FruitIndex;
@@ -109,7 +108,7 @@ public class GameManage : MonoBehaviour
         if (!isMoving && !isDown && Can_Spawn)
         {
             delay_Spawn_Time += Time.deltaTime;
-            if (delay_Spawn_Time >= 0.5f)
+            if (delay_Spawn_Time >= 1f)
             {
                 SpawnNewFruit();
             }
@@ -203,6 +202,7 @@ public class GameManage : MonoBehaviour
             
             Debug.Log("Index: " + FruitIndex);
             Transform ReplaceFruit = Instantiate(FruitPrefabs[FruitIndex + 1], enterPosition, FruitPrefabs[FruitIndex + 1].rotation);
+            currentFruits.Add(ReplaceFruit);
             Debug.Log("Replace: " + ReplaceFruit.name);
 
             GamePoint += (FruitIndex + 1) * 10;
